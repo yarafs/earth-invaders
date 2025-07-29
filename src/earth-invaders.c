@@ -31,6 +31,15 @@
 #define BOSS_OFFSET_X 7
 #define BOSS_OFFSET_Y 4
 
+// Dificuldades (aumenta quantidade de spawns e chance de atirar)
+#define SCORE_FACIL 5
+#define SCORE_MEDIO 20
+#define SCORE_DIFICIL 40
+#define SCORE_EXTREMO 100
+
+// Quantidade de partículas que aparecem ao eliminar o inimigo boss
+#define MAX_PARTICULAS 15
+
 
 /* ====== VARIÁVEIS GLOBAIS ====== */
 int nave_x = (SCREEN_SIZE / 2) - (PLAYER_OFFSET_X + PLAYER_HITBOX_WIDTH / 2);   // Posição inicial x da nave do jogador
@@ -41,7 +50,8 @@ uint8_t gamepad_anterior = 0;   // Armazena o estado anterior do gamepad
 int vida_jogador = 3;
 int tela = 0;
 int primeiro_frame_jogo = 1; // 1 = true, 0 = false (para evitar o double click no primeiro frame)
-int delay_inimigos = 90; // ~1.5 segundos para spawnar inimigos
+int delay_inimigos = 50; // <~1 segundo para spawnar inimigos
+int chance_disparo = 1;  // Valor base (1%) para a chance de um inimigo atirar por frame
 
 
 /* ====== ESTRUTURA DO INIMIGO ====== */
@@ -100,6 +110,38 @@ void spawn_boss() {
         boss.timer_animacao = 0;
     }
 }
+
+
+/* ====== PARTÍCULAS ====== */
+typedef struct {
+    int32_t x, y;      // Posição
+    int dx, dy;        // Velocidade
+    int vida;          // Duração
+    uint32_t tamanho;  // Tamanho
+} Particula;
+
+Particula particulas[MAX_PARTICULAS];
+int particulas_ativas = 0;
+
+void explosao_particulas_boss(int x, int y) {
+    tone(300, 15, 35, TONE_NOISE);
+    tone(400, 20, 30, TONE_PULSE2);
+    
+    for (int i = 0; i < MAX_PARTICULAS; i++) {
+        if (particulas_ativas < MAX_PARTICULAS) {
+            particulas[particulas_ativas] = (Particula){
+                .x = x + BOSS_OFFSET_X + (BOSS_HITBOX_WIDTH/2), // Posição X (centro do boss)
+                .y = y + BOSS_OFFSET_Y + (BOSS_HITBOX_HEIGHT/2), // Posição Y (centro do boss)
+                .dx = (rand() % 5) - 2, // Velocidade horiz. aleatória (-2 a +2px p/ frame)
+                .dy = (rand() % 5) - 4, // Velocidade vert. aleatória (-4 a 0px p/ frame)
+                .vida = 15 + (rand() % 20), // Tempo de vida aleatório (14 a 34 frames)
+                .tamanho = 4  // Tamanho inicial fixo de 4 pixels
+            };
+            particulas_ativas++;
+        }
+    }
+}
+
 
 /* ====== SISTEMA DE TIROS ====== */
 int tiro_cooldown = 0;   // Timer entre disparos para saber quando podemos atirar
@@ -180,29 +222,24 @@ int tempo_entre_spawns = 0;
 
 void atualizar_dificuldade() {
 
-    // Extremo
-    if (pontuacao >= 100) {
+    if (pontuacao >= SCORE_EXTREMO) {
         tempo_entre_spawns = 40;
         max_inimigos_ativos = 5;
     }
 
-    // Difícil
-    else if (pontuacao >= 60) {
-        tempo_entre_spawns = 40;
+    else if (pontuacao >= SCORE_DIFICIL) {
+        tempo_entre_spawns = 60;
         max_inimigos_ativos = 4;
     }
 
-    // Médio
-    else if (pontuacao >= 30) {
-        tempo_entre_spawns = 40;
+    else if (pontuacao >= SCORE_MEDIO) {
+        tempo_entre_spawns = 60;
         max_inimigos_ativos = 3;
 
-    // Fácil
-    } else if (pontuacao >= 5) {
+    } else if (pontuacao >= SCORE_FACIL) {
         tempo_entre_spawns = 40;
         max_inimigos_ativos = 2;
 
-    // Tutorial
     } else {
         tempo_entre_spawns = 1;
         max_inimigos_ativos = 1;
@@ -248,6 +285,8 @@ void update () {
     PALETTE[1] = 0x6CEDED; // 2 - Azul elétrico
     PALETTE[2] = 0x2d879a; // 3 - Azul
     PALETTE[3] = 0x404040; // 4 - Cinza Escuro
+
+    
 
     uint8_t gamepad = *GAMEPAD1;    // Leitura do controle
 
@@ -347,7 +386,7 @@ void update () {
         atualizar_dificuldade();          // Ajusta a dificuldade conforme a pontuação
         contador_frames++;                // Contador de frames para temporização
 
-        // Delay inicial para evitar double click quando chega nessa tela
+        // Delay inicial para evitar double click quando chega na tela atual
         if (primeiro_frame_jogo) {
             primeiro_frame_jogo = 0; // Marca como não é mais o primeiro frame
             tiro_cooldown = 15;
@@ -382,6 +421,27 @@ void update () {
 
         if (nave_y > SCREEN_SIZE - (PLAYER_OFFSET_Y + PLAYER_HITBOX_HEIGHT) + 5) //Baixo
             nave_y = SCREEN_SIZE - (PLAYER_OFFSET_Y + PLAYER_HITBOX_HEIGHT) + 5;
+        
+        // Verifica se existem partículas ativas para processar (da eliminação do boss)
+        if (particulas_ativas > 0) {
+            *DRAW_COLORS = 3;
+
+            // Move as partículas e calcula seu tamanho baseado no tempo de vida restante
+            for (int i = 0; i < particulas_ativas; i++) {
+                particulas[i].x += particulas[i].dx;
+                particulas[i].y += particulas[i].dy;
+                particulas[i].tamanho = (uint32_t)(particulas[i].vida / 20) + 1;
+                particulas[i].vida--;
+                
+                rect(particulas[i].x, particulas[i].y, particulas[i].tamanho, particulas[i].tamanho);
+                
+                // Remoção de partículas que já foram expiradas
+                if (particulas[i].vida <= 0) {
+                    particulas[i] = particulas[--particulas_ativas];
+                    i--;
+                }
+            }
+        }
         
         // Delay para os inimigos aparecerem quando acabamos de sair da tela 1
         if (delay_inimigos > 0) {
@@ -419,14 +479,25 @@ void update () {
             }
         }
 
-        // Inimigo atira com chances aleatórias
+        // Inimigo atira com chances aleatórias por frame dependendo do score/dificuldade
         for (int i = 0; i < max_inimigos_ativos; i++) {
+            if (pontuacao >= SCORE_EXTREMO) {
+                chance_disparo = 2; }
+            else if (pontuacao >= SCORE_DIFICIL) {
+                chance_disparo = 2; } 
+            else if (pontuacao >= SCORE_MEDIO) {
+                chance_disparo = 2; } 
+            else if (pontuacao >= SCORE_FACIL) {
+                chance_disparo = 1; }
+            else {
+                chance_disparo = 3; }
+
             if (inimigos[i].ativo && inimigos[i].y < 70) {
                 if (inimigos[i].tiro_cooldown > 0) {
                     inimigos[i].tiro_cooldown--;
-                } else if ((rand() % 150) < 1) { // 0.75% de chance por frame
+                } else if ((rand() % 160) < chance_disparo) {
                     disparar_tiro_inimigo(inimigos[i].x, inimigos[i].y);
-                    inimigos[i].tiro_cooldown = 90; // espera 60 frames (1s) para o próximo tiro
+                    inimigos[i].tiro_cooldown = 90; // Espera >~1s frame para o próximo tiro
                 }
             }
         }
@@ -584,7 +655,7 @@ void update () {
                         for (int j = 0; j < max_inimigos_ativos; j++) {
                             if (inimigos[j].ativo && 
                                 tiros[i].x >= inimigos[j].x + ENEMY_OFFSET_X && 
-                                tiros[i].x <= inimigos[j].x + ENEMY_OFFSET_X + ENEMY_HITBOX_WIDTH &&
+                                tiros[i].x <= inimigos[j].x + ENEMY_OFFSET_X + ENEMY_HITBOX_WIDTH + 3 &&
                                 tiros[i].y >= inimigos[j].y + ENEMY_OFFSET_Y && 
                                 tiros[i].y <= inimigos[j].y + ENEMY_OFFSET_Y + ENEMY_HITBOX_HEIGHT) {
                                 
@@ -612,9 +683,9 @@ void update () {
                                 tone(100, 5, 50, TONE_NOISE);
 
                                 if (boss.vida <= 0) {
+                                    explosao_particulas_boss(boss.x, boss.y);  // Adicione esta linha
                                     boss.ativo = 0;
                                     pontuacao++;
-                                    tone(300, 15, 35, TONE_NOISE);
                                 }
                             }
                         }
@@ -711,7 +782,7 @@ void update () {
         text("Press X to retry", 17, 105);
 
         // Se apertar X, resetar o estado e voltar para o jogo
-        if ((gamepad & BUTTON_1) && !(gamepad_anterior & BUTTON_1) && contador_frames > 30) {
+        if ((gamepad & BUTTON_1) && !(gamepad_anterior & BUTTON_1) && contador_frames > 60) {
             nave_x = 64;
             nave_y = 53;
             pontuacao = 0;
