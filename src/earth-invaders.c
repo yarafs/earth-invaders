@@ -40,6 +40,8 @@ int pontuacao = 0;   // Score do jogador
 uint8_t gamepad_anterior = 0;   // Armazena o estado anterior do gamepad
 int vida_jogador = 3;
 int tela = 0;
+int primeiro_frame_jogo = 1; // 1 = true, 0 = false (para evitar o double click no primeiro frame)
+int delay_inimigos = 90; // ~1.5 segundos para spawnar inimigos
 
 
 /* ====== ESTRUTURA DO INIMIGO ====== */
@@ -113,7 +115,7 @@ void disparar_tiro_jogador(int x, int y) {
             tiros[i].x = x + PLAYER_OFFSET_X + (PLAYER_HITBOX_WIDTH/2);  // Centro da hitbox da nave
             tiros[i].y = y + PLAYER_OFFSET_Y - 2;  // Acima da hitbox
             tiros[i].ativo = 1;
-            tone(600, 5, 5, TONE_PULSE2);
+            tone(600, 5, 50, TONE_PULSE2);
             break;
         }
     }
@@ -125,7 +127,7 @@ void disparar_tiro_inimigo(int x, int y) {
             tiros_inimigos[i].x = x + ENEMY_OFFSET_X + (ENEMY_HITBOX_WIDTH/2);   //Centraliza no hitbox
             tiros_inimigos[i].y = y + ENEMY_OFFSET_Y + ENEMY_HITBOX_HEIGHT;   //Parte inferior do hitbox
             tiros_inimigos[i].ativo = 1;
-            tone(300, 5, 3, TONE_PULSE1);
+            tone(300, 5, 35, TONE_PULSE1);
             break;
         }
     }
@@ -275,7 +277,7 @@ void update () {
 
         // Pressionar X para ir na próxima tela
         if (gamepad & BUTTON_1) {
-            tone(200, 10, 10, TONE_PULSE1);
+            tone(200, 10, 50, TONE_PULSE1);
             contador_frames = 0;    // Reseta o contador para evitar duplo clique
             tela = 1;
         }
@@ -312,7 +314,7 @@ void update () {
 
         // Vai para o jogo (só permite depois de 30 frames, pra evitar apertar 2x sem querer)
         if (contador_frames > 30 && (gamepad & BUTTON_1) && !(gamepad_anterior & BUTTON_1)) {
-            tone(400, 10, 10, TONE_PULSE2);
+            tone(400, 10, 50, TONE_PULSE2);
             contador_frames = 0;
             tela = 2;
         }
@@ -323,6 +325,12 @@ void update () {
     else if (tela == 2) {
         atualizar_dificuldade();          // Ajusta a dificuldade conforme a pontuação
         contador_frames++;                // Contador de frames para temporização
+
+        // Delay inicial para evitar double click quando chega nessa tela
+        if (primeiro_frame_jogo) {
+            primeiro_frame_jogo = 0; // Marca como não é mais o primeiro frame
+            tiro_cooldown = 15;
+        }
 
         // Background animado de estrelas
         *DRAW_COLORS = 4;
@@ -353,12 +361,17 @@ void update () {
 
         if (nave_y > SCREEN_SIZE - (PLAYER_OFFSET_Y + PLAYER_HITBOX_HEIGHT) + 5) //Baixo
             nave_y = SCREEN_SIZE - (PLAYER_OFFSET_Y + PLAYER_HITBOX_HEIGHT) + 5;
-
-        // Spawn de inimigos a cada 35 frames
-        inimigo_spawn_timer++;
-        if (inimigo_spawn_timer >= tempo_entre_spawns) {
-            spawn_inimigos();
-            inimigo_spawn_timer = 0;
+        
+        // Delay para os inimigos aparecerem quando acabamos de sair da tela 1
+        if (delay_inimigos > 0) {
+            delay_inimigos--;
+        } else {
+            // Spawn de inimigos a cada 35 frames
+            inimigo_spawn_timer++;
+            if (inimigo_spawn_timer >= tempo_entre_spawns) {
+                spawn_inimigos();
+                inimigo_spawn_timer = 0;
+            }
         }
 
         // Movimenta e desenha os inimigos se estiver ativo
@@ -372,10 +385,10 @@ void update () {
 
                     if (vida_jogador <= 0) {
                         contador_frames = 0;
-                        tone(150, 5, 15, TONE_PULSE1);
+                        tone(150, 5, 50, TONE_PULSE1);
                         tela = 3; // Game over :(
                     }
-                    tone(120, 5, 10, TONE_NOISE);
+                    tone(120, 5, 50, TONE_NOISE);
 
                 } else {
                     *DRAW_COLORS = 0x0023;
@@ -412,14 +425,14 @@ void update () {
 
             if (boss.y > SCREEN_SIZE) {
                 contador_frames = 0;
-                tone(150, 5, 15, TONE_PULSE1);
-                tela = 3;        // Game over
+                tone(150, 5, 50, TONE_PULSE1);
+                tela = 3;   // Game over
             } else {
                 *DRAW_COLORS = 0x0032;
                 blit(nave_inimiga_boss, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
             }
         }
-
+        
         // Atira se apertar X (o cooldown é para evitar que o jogador dispare continuamente)
         if ((gamepad & BUTTON_1) && tiro_cooldown == 0) {
             disparar_tiro_jogador(nave_x, nave_y);
@@ -458,8 +471,8 @@ void update () {
                 boss.ativo = 0;
             }
 
-            tone(400, 5, 5, TONE_PULSE1);
-            tone(60, 30, 20, TONE_NOISE);
+            tone(400, 5, 70, TONE_PULSE1);
+            tone(60, 30, 90, TONE_NOISE);
         }
         if (explosao_cooldown > 0) {
             explosao_cooldown--;
@@ -541,7 +554,7 @@ void update () {
                                 tiros[i].ativo = 0;
                                 inimigos[j].ativo = 0;
                                 pontuacao++;
-                                tone(100, 5, 10, TONE_NOISE);
+                                tone(100, 5, 50, TONE_NOISE);
                             }
                         }
                         
@@ -559,12 +572,12 @@ void update () {
                                 tiros[i].y <= boss.y + BOSS_OFFSET_Y + BOSS_HITBOX_HEIGHT) {
                                 tiros[i].ativo = 0;
                                 boss.vida--;
-                                tone(100, 5, 10, TONE_NOISE);
+                                tone(100, 5, 50, TONE_NOISE);
 
                                 if (boss.vida <= 0) {
                                     boss.ativo = 0;
                                     pontuacao++;
-                                    tone(300, 15, 4, TONE_NOISE);
+                                    tone(300, 15, 35, TONE_NOISE);
                                 }
                             }
                         }
@@ -588,10 +601,10 @@ void update () {
 
                         if (vida_jogador <= 0) {
                             contador_frames = 0;
-                            tone(150, 5, 10, TONE_PULSE1);
+                            tone(150, 5, 50, TONE_PULSE1);
                             tela = 3; // Game Over
                         } else {
-                            tone(120, 5, 10, TONE_NOISE);
+                            tone(120, 5, 50, TONE_NOISE);
                         }
                     }
 
@@ -617,21 +630,47 @@ void update () {
             rect(estrelas[i].x, estrelas[i].y, 1, 1);
         }
 
+        // Centraliza "GAME OVER" (8 caracteres)
         *DRAW_COLORS = 2;
-        text("Game Over", 44, 45);
+        text("Game Over", 44, 45);  // Cada caractere tem 8px de largura
 
-        *DRAW_COLORS = 3;
-        char score_str[20] = "Your Score: ";
-        char num_str[10];
-        int_to_str(pontuacao, num_str);
-        int i = 11; // depois de "Your Score: "
-        for (int j = 0; num_str[j] != '\0'; j++) {
-            score_str[i++] = num_str[j];
+
+        // Centraliza o score dinamicamente (de acordo com a quantidade de dígitos)
+        char score_text[12] = "Score: ";
+        int score_len = 7;  // "Score: " tem 7 caracteres
+        int temp_score = pontuacao;
+        int digits = 0;
+        char num_str[4] = {0};
+        
+        if (temp_score == 0) {
+            num_str[0] = '0';
+            digits = 1;
+        } else {
+            while (temp_score > 0) {
+                num_str[digits++] = '0' + (temp_score % 10);
+                temp_score /= 10;
+            }
+            // Inverte os dígitos
+            for (int i = 0; i < digits/2; i++) {
+                char temp = num_str[i];
+                num_str[i] = num_str[digits-1-i];
+                num_str[digits-1-i] = temp;
+            }
         }
-        score_str[i] = '\0';
-        text(score_str, 30, 65);
+        
+        // Concatena manualmente
+        for (int i = 0; i < digits; i++) {
+            score_text[score_len++] = num_str[i];
+        }
+        score_text[score_len] = '\0';
 
+        // Calcula posição X (considerando 8px por caractere)
+        int text_width = score_len * 8;
+        int pos_x = (SCREEN_SIZE - text_width) / 2;
         *DRAW_COLORS = 2;
+        text(score_text, pos_x, 65);
+        
+        *DRAW_COLORS = 3;
         text("Press X to retry", 17, 105);
 
         // Se apertar X, resetar o estado e voltar para o jogo
