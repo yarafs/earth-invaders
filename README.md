@@ -1,7 +1,8 @@
 # Earth Invaders
 
-![Gameplay Screenshot](assets/earth-invaders.png)
-![Gameplay Screenshot](assets/earth-invaders2.png)
+<p align="center">
+  <img src="assets/screenshot1.png" alt="Gameplay Screenshot" width="300">
+</p>
 
 A reimagining of the classic *Space Invaders*, but this time, Earth is the enemy. Destroy incoming ships, dodge bullets, and use your ultimate ability to obliterate everything.
 
@@ -44,7 +45,7 @@ For more info about setting up WASM-4, see the [quickstart guide](https://wasm4.
 
 ## :information_source: About this Project
 
-This retro-style shooter game was developed for the [WASM-4](https://wasm4.org) fantasy console as part of a university assignment at *Universidade Estadual de Maringá*, under the guidance of professor Marcelo G. Malheiros.  
+This retro-style shooter game was developed for the [WASM-4](https://wasm4.org) fantasy console as part of a university assignment at *Universidade Estadual de Maringá* (UEM), under the guidance of professor Marcelo G. Malheiros.  
 
 All code and assets were created from scratch for learning purposes.
 

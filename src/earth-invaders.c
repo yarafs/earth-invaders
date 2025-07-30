@@ -34,7 +34,7 @@
 // Dificuldades (aumenta quantidade de spawns e chance de atirar)
 #define SCORE_FACIL 5
 #define SCORE_MEDIO 20
-#define SCORE_DIFICIL 40
+#define SCORE_DIFICIL 50
 #define SCORE_EXTREMO 100
 
 // Quantidade de partículas que aparecem ao eliminar o inimigo boss
@@ -223,17 +223,17 @@ int tempo_entre_spawns = 0;
 void atualizar_dificuldade() {
 
     if (pontuacao >= SCORE_EXTREMO) {
-        tempo_entre_spawns = 40;
-        max_inimigos_ativos = 5;
+        tempo_entre_spawns = 35;
+        max_inimigos_ativos = 4;
     }
 
     else if (pontuacao >= SCORE_DIFICIL) {
-        tempo_entre_spawns = 60;
+        tempo_entre_spawns = 40;
         max_inimigos_ativos = 4;
     }
 
     else if (pontuacao >= SCORE_MEDIO) {
-        tempo_entre_spawns = 60;
+        tempo_entre_spawns = 50;
         max_inimigos_ativos = 3;
 
     } else if (pontuacao >= SCORE_FACIL) {
@@ -484,9 +484,9 @@ void update () {
             if (pontuacao >= SCORE_EXTREMO) {
                 chance_disparo = 2; }
             else if (pontuacao >= SCORE_DIFICIL) {
-                chance_disparo = 2; } 
+                chance_disparo = 1; } 
             else if (pontuacao >= SCORE_MEDIO) {
-                chance_disparo = 2; } 
+                chance_disparo = 2; }
             else if (pontuacao >= SCORE_FACIL) {
                 chance_disparo = 1; }
             else {
@@ -495,7 +495,7 @@ void update () {
             if (inimigos[i].ativo && inimigos[i].y < 70) {
                 if (inimigos[i].tiro_cooldown > 0) {
                     inimigos[i].tiro_cooldown--;
-                } else if ((rand() % 160) < chance_disparo) {
+                } else if ((rand() % 100) < chance_disparo) {
                     disparar_tiro_inimigo(inimigos[i].x, inimigos[i].y);
                     inimigos[i].tiro_cooldown = 90; // Espera >~1s frame para o próximo tiro
                 }
