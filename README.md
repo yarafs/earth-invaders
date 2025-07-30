@@ -1,7 +1,6 @@
 # Earth Invaders
 
-<img src="assets/screenshot1.png" width="320" alt="Screenshot 1">
-<img src="assets/screenshot2.png" width="320" alt="Screenshot 2">
+![screenshot 1](assets/screenshot1.png)  ![screenshot 2](assets/screenshot2.png)
 
 A reimagining of the classic *Space Invaders*, but this time, Earth is the enemy. Destroy incoming ships, dodge bullets, and use your ultimate ability to obliterate everything.
 
