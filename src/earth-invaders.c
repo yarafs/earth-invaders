@@ -14,20 +14,20 @@
 #define SPRITE_TOTAL_SIZE 32
 
 // Hitbox da nave do jogador (área colisível menor que o sprite)
-#define PLAYER_HITBOX_WIDTH 17
-#define PLAYER_HITBOX_HEIGHT 10
+#define PLAYER_HITBOX_LARGURA 17
+#define PLAYER_HITBOX_ALTURA 10
 #define PLAYER_OFFSET_X 3
 #define PLAYER_OFFSET_Y 2
 
 // Hitbox da nave inimiga (área colisível menor que o sprite)
-#define ENEMY_HITBOX_WIDTH 14
-#define ENEMY_HITBOX_HEIGHT 15
-#define ENEMY_OFFSET_X 9
-#define ENEMY_OFFSET_Y 6
+#define INIMIGO_HITBOX_LARGURA 14
+#define INIMIGO_HITBOX_ALTURA 15
+#define INIMIGO_OFFSET_X 9
+#define INIMIGO_OFFSET_Y 6
 
 // Hitbox da nave boss (área colisível menor que o sprite)
-#define BOSS_HITBOX_WIDTH 16
-#define BOSS_HITBOX_HEIGHT 16
+#define BOSS_HITBOX_LARGURA 16
+#define BOSS_HITBOX_ALTURA 16
 #define BOSS_OFFSET_X 7
 #define BOSS_OFFSET_Y 4
 
@@ -42,15 +42,15 @@
 
 
 /* ====== VARIÁVEIS GLOBAIS ====== */
-int nave_x = (SCREEN_SIZE / 2) - (PLAYER_OFFSET_X + PLAYER_HITBOX_WIDTH / 2);   // Posição inicial x da nave do jogador
-int nave_y = (SCREEN_SIZE / 2) - (PLAYER_OFFSET_Y + PLAYER_HITBOX_HEIGHT / 2) - 8;   // Posição inicial y da nave do jogador
+int nave_x = (SCREEN_SIZE / 2) - (PLAYER_OFFSET_X + PLAYER_HITBOX_LARGURA / 2);   // Posição inicial x da nave do jogador
+int nave_y = (SCREEN_SIZE / 2) - (PLAYER_OFFSET_Y + PLAYER_HITBOX_ALTURA / 2) - 8;   // Posição inicial y da nave do jogador
 int contador_frames = 0;   // Contador geral de frames para eventos temporizados
 int pontuacao = 0;   // Score do jogador
 uint8_t gamepad_anterior = 0;   // Armazena o estado anterior do gamepad
 int vida_jogador = 3;
 int tela = 0;
 int primeiro_frame_jogo = 1; // 1 = true, 0 = false (para evitar o double click no primeiro frame)
-int delay_inimigos = 50; // <~1 segundo para spawnar inimigos
+int delay_inimigos = 40; // <~1 segundo para spawnar inimigos
 int chance_disparo = 1;  // Valor base (1%) para a chance de um inimigo atirar por frame
 
 
@@ -130,8 +130,8 @@ void explosao_particulas_boss(int x, int y) {
     for (int i = 0; i < MAX_PARTICULAS; i++) {
         if (particulas_ativas < MAX_PARTICULAS) {
             particulas[particulas_ativas] = (Particula){
-                .x = x + BOSS_OFFSET_X + (BOSS_HITBOX_WIDTH/2), // Posição X (centro do boss)
-                .y = y + BOSS_OFFSET_Y + (BOSS_HITBOX_HEIGHT/2), // Posição Y (centro do boss)
+                .x = x + BOSS_OFFSET_X + (BOSS_HITBOX_LARGURA/2), // Posição X (centro do boss)
+                .y = y + BOSS_OFFSET_Y + (BOSS_HITBOX_ALTURA/2), // Posição Y (centro do boss)
                 .dx = (rand() % 5) - 2, // Velocidade horiz. aleatória (-2 a +2px p/ frame)
                 .dy = (rand() % 5) - 4, // Velocidade vert. aleatória (-4 a 0px p/ frame)
                 .vida = 15 + (rand() % 20), // Tempo de vida aleatório (14 a 34 frames)
@@ -157,8 +157,8 @@ Tiro tiros_inimigos[MAX_TIROS_INIMIGOS];
 void disparar_tiro_jogador(int x, int y) {
     for (int i = 0; i < MAX_TIROS; i++) {
         if (!tiros[i].ativo) {
-            tiros[i].x = x + PLAYER_OFFSET_X + (PLAYER_HITBOX_WIDTH/2);  // Centro da hitbox da nave
-            tiros[i].y = y + PLAYER_OFFSET_Y - 2;  // Acima da hitbox
+            tiros[i].x = x + PLAYER_OFFSET_X + (PLAYER_HITBOX_LARGURA/2);  // Centro da hitbox da nave
+            tiros[i].y = y + PLAYER_OFFSET_Y;  // Acima da hitbox
             tiros[i].ativo = 1;
             tone(600, 5, 50, TONE_PULSE2);
             break;
@@ -169,8 +169,8 @@ void disparar_tiro_jogador(int x, int y) {
 void disparar_tiro_inimigo(int x, int y) {
     for (int i = 0; i < MAX_TIROS_INIMIGOS; i++) {
         if (!tiros_inimigos[i].ativo) {
-            tiros_inimigos[i].x = x + ENEMY_OFFSET_X + (ENEMY_HITBOX_WIDTH/2);   //Centraliza no hitbox
-            tiros_inimigos[i].y = y + ENEMY_OFFSET_Y + ENEMY_HITBOX_HEIGHT;   //Parte inferior do hitbox
+            tiros_inimigos[i].x = x + INIMIGO_OFFSET_X + (INIMIGO_HITBOX_LARGURA/2);   //Centraliza no hitbox
+            tiros_inimigos[i].y = y + INIMIGO_OFFSET_Y + INIMIGO_HITBOX_ALTURA;   //Parte inferior do hitbox
             tiros_inimigos[i].ativo = 1;
             tone(300, 5, 35, TONE_PULSE1);
             break;
@@ -223,17 +223,17 @@ int tempo_entre_spawns = 0;
 void atualizar_dificuldade() {
 
     if (pontuacao >= SCORE_EXTREMO) {
-        tempo_entre_spawns = 35;
-        max_inimigos_ativos = 4;
-    }
-
-    else if (pontuacao >= SCORE_DIFICIL) {
         tempo_entre_spawns = 40;
         max_inimigos_ativos = 4;
     }
 
+    else if (pontuacao >= SCORE_DIFICIL) {
+        tempo_entre_spawns = 45;
+        max_inimigos_ativos = 4;
+    }
+
     else if (pontuacao >= SCORE_MEDIO) {
-        tempo_entre_spawns = 50;
+        tempo_entre_spawns = 55;
         max_inimigos_ativos = 3;
 
     } else if (pontuacao >= SCORE_FACIL) {
@@ -387,7 +387,7 @@ void update () {
         contador_frames++;                // Contador de frames para temporização
 
         // Delay inicial para evitar double click quando chega na tela atual
-        if (primeiro_frame_jogo) {
+        if (primeiro_frame_jogo == 1) {
             primeiro_frame_jogo = 0; // Marca como não é mais o primeiro frame
             tiro_cooldown = 15;
         }
@@ -413,14 +413,14 @@ void update () {
         if (nave_x < -PLAYER_OFFSET_X)  //Esquerda
             nave_x = -PLAYER_OFFSET_X;
 
-        if (nave_x > SCREEN_SIZE - (PLAYER_OFFSET_X + PLAYER_HITBOX_WIDTH)) //Direita
-            nave_x = SCREEN_SIZE - (PLAYER_OFFSET_X + PLAYER_HITBOX_WIDTH);
+        if (nave_x > SCREEN_SIZE - (PLAYER_OFFSET_X + PLAYER_HITBOX_LARGURA)) //Direita
+            nave_x = SCREEN_SIZE - (PLAYER_OFFSET_X + PLAYER_HITBOX_LARGURA);
 
         if (nave_y < -PLAYER_OFFSET_Y) // Cima
             nave_y = -PLAYER_OFFSET_Y;
 
-        if (nave_y > SCREEN_SIZE - (PLAYER_OFFSET_Y + PLAYER_HITBOX_HEIGHT) + 5) //Baixo
-            nave_y = SCREEN_SIZE - (PLAYER_OFFSET_Y + PLAYER_HITBOX_HEIGHT) + 5;
+        if (nave_y > SCREEN_SIZE - (PLAYER_OFFSET_Y + PLAYER_HITBOX_ALTURA) + 5) //Baixo
+            nave_y = SCREEN_SIZE - (PLAYER_OFFSET_Y + PLAYER_HITBOX_ALTURA) + 5;
         
         // Verifica se existem partículas ativas para processar (da eliminação do boss)
         if (particulas_ativas > 0) {
@@ -474,7 +474,7 @@ void update () {
                 } else {
                     *DRAW_COLORS = 0x0023;
                     blit(nave_inimiga, inimigos[i].x, inimigos[i].y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
-                    
+
                 }
             }
         }
@@ -511,33 +511,47 @@ void update () {
 
         // Movimenta e desenha o boss se ele estiver ativo
         if (boss.ativo) {
-            // Atualiza animação
-            boss.timer_animacao++;
-            if (boss.timer_animacao >= 10) { // Muda sprite a cada 10 frames
-                boss.timer_animacao = 0;
-                boss.frame_animacao = (boss.frame_animacao + 1) % 4; // Cicla entre 0, 1, 2 e 3
-            }
             
-            // Movimentação normal
+            // Se movimenta 1 pixel a cada 2 frames
             if (contador_frames % 2 == 0) {
                 boss.y += 1;
             }
 
-            // Renderiza o sprite correto
-            *DRAW_COLORS = 0x0032;
-            switch(boss.frame_animacao) {
-                case 0:
-                    blit(nave_inimiga_boss1, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
-                    break;
-                case 1:
-                    blit(nave_inimiga_boss2, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
-                    break;
-                case 2:
-                    blit(nave_inimiga_boss3, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
-                    break;
-                case 3:
-                    blit(nave_inimiga_boss4, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
-                    break;
+            //Se o boss sai da tela...
+            if (boss.y > SCREEN_SIZE) {
+                boss.ativo = 0;
+                vida_jogador--;
+                if (vida_jogador <= 0) {
+                    contador_frames = 0;
+                    tone(150, 5, 50, TONE_PULSE1);
+                    tela = 3;   // Game over
+                } else {
+                    tone(120, 5, 50, TONE_NOISE);
+                }
+            } else {
+                // Atualiza animação
+                boss.timer_animacao++;
+                if (boss.timer_animacao >= 10) { // Muda sprite a cada 10 frames
+                    boss.timer_animacao = 0;
+                    boss.frame_animacao = (boss.frame_animacao + 1) % 4; // Muda entre 0, 1, 2 e 3
+                }
+                
+                // Renderiza o sprite correto (de acordo com a animação)
+                *DRAW_COLORS = 0x0032;
+                switch(boss.frame_animacao) {
+                    case 0:
+                        blit(nave_inimiga_boss1, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
+                        break;
+                    case 1:
+                        blit(nave_inimiga_boss2, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
+                        break;
+                    case 2:
+                        blit(nave_inimiga_boss3, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
+                        break;
+                    case 3:
+                        blit(nave_inimiga_boss4, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
+                        break;
+                }
             }
         }
         
@@ -654,10 +668,10 @@ void update () {
                         // Checa colisão com os inimigos
                         for (int j = 0; j < max_inimigos_ativos; j++) {
                             if (inimigos[j].ativo && 
-                                tiros[i].x >= inimigos[j].x + ENEMY_OFFSET_X && 
-                                tiros[i].x <= inimigos[j].x + ENEMY_OFFSET_X + ENEMY_HITBOX_WIDTH + 3 &&
-                                tiros[i].y >= inimigos[j].y + ENEMY_OFFSET_Y && 
-                                tiros[i].y <= inimigos[j].y + ENEMY_OFFSET_Y + ENEMY_HITBOX_HEIGHT) {
+                                tiros[i].x >= inimigos[j].x + INIMIGO_OFFSET_X && 
+                                tiros[i].x <= inimigos[j].x + INIMIGO_OFFSET_X + INIMIGO_HITBOX_LARGURA + 3 &&
+                                tiros[i].y >= inimigos[j].y + INIMIGO_OFFSET_Y && 
+                                tiros[i].y <= inimigos[j].y + INIMIGO_OFFSET_Y + INIMIGO_HITBOX_ALTURA) {
                                 
                                 tiros[i].ativo = 0;
                                 inimigos[j].ativo = 0;
@@ -675,9 +689,9 @@ void update () {
                         if (boss.ativo) {
                             if (boss.ativo && 
                                 tiros[i].x >= boss.x + BOSS_OFFSET_X &&
-                                tiros[i].x <= boss.x + BOSS_OFFSET_X + BOSS_HITBOX_WIDTH &&
+                                tiros[i].x <= boss.x + BOSS_OFFSET_X + BOSS_HITBOX_LARGURA &&
                                 tiros[i].y >= boss.y + BOSS_OFFSET_Y &&
-                                tiros[i].y <= boss.y + BOSS_OFFSET_Y + BOSS_HITBOX_HEIGHT) {
+                                tiros[i].y <= boss.y + BOSS_OFFSET_Y + BOSS_HITBOX_ALTURA) {
                                 tiros[i].ativo = 0;
                                 boss.vida--;
                                 tone(100, 5, 50, TONE_NOISE);
@@ -700,17 +714,17 @@ void update () {
                     tiros_inimigos[i].y += 2;
 
                     //Jogador leva tiro (perde vida)
-                    if (tiros_inimigos[i].x >= nave_x + PLAYER_OFFSET_X && 
-                        tiros_inimigos[i].x <= nave_x + PLAYER_OFFSET_X + PLAYER_HITBOX_WIDTH &&
-                        tiros_inimigos[i].y >= nave_y + PLAYER_OFFSET_Y && 
-                        tiros_inimigos[i].y <= nave_y + PLAYER_OFFSET_Y + PLAYER_HITBOX_HEIGHT) {
+                    if (tiros_inimigos[i].x >= nave_x + PLAYER_OFFSET_X &&
+                        tiros_inimigos[i].x <= nave_x + PLAYER_OFFSET_X + PLAYER_HITBOX_LARGURA &&
+                        tiros_inimigos[i].y >= nave_y + PLAYER_OFFSET_Y - 3 &&  // Não sei por que precisa subtrair 3 para atingir corretamente o hitbox do jogador
+                        tiros_inimigos[i].y <= nave_y + PLAYER_OFFSET_Y + PLAYER_HITBOX_ALTURA + 10) {
                         tiros_inimigos[i].ativo = 0;
                         vida_jogador--;
 
                         if (vida_jogador <= 0) {
                             contador_frames = 0;
                             tone(150, 5, 50, TONE_PULSE1);
-                            tela = 3; // Game Over
+                            tela = 3;   // Game Over
                         } else {
                             tone(120, 5, 50, TONE_NOISE);
                         }
@@ -782,7 +796,7 @@ void update () {
         text("Press X to retry", 17, 105);
 
         // Se apertar X, resetar o estado e voltar para o jogo
-        if ((gamepad & BUTTON_1) && !(gamepad_anterior & BUTTON_1) && contador_frames > 60) {
+        if ((gamepad & BUTTON_1) && !(gamepad_anterior & BUTTON_1) && contador_frames > 45) {
             nave_x = 64;
             nave_y = 53;
             pontuacao = 0;
@@ -792,6 +806,8 @@ void update () {
             explosao_cooldown = 0;
             tiro_cooldown = 0;
             vida_jogador = 3;
+            primeiro_frame_jogo = 1;
+            delay_inimigos = 40;
             for (int i = 0; i < MAX_TIROS; i++) tiros[i].ativo = 0;
             for (int i = 0; i < max_inimigos_ativos; i++) inimigos[i].ativo = 0;
             for (int i = 0; i < MAX_TIROS_INIMIGOS; i++) tiros_inimigos[i].ativo = 0;
