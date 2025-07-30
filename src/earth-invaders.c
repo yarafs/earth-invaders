@@ -223,7 +223,7 @@ int tempo_entre_spawns = 0;
 void atualizar_dificuldade() {
 
     if (pontuacao >= SCORE_EXTREMO) {
-        tempo_entre_spawns = 40;
+        tempo_entre_spawns = 45;
         max_inimigos_ativos = 4;
     }
 
@@ -591,6 +591,7 @@ void update () {
             // Limpa o boss
             if (boss.ativo) {
                 boss.ativo = 0;
+                pontuacao++;
             }
 
             tone(400, 5, 70, TONE_PULSE1);

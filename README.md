@@ -2,7 +2,7 @@
 
 ![screenshot 1](assets/screenshot1.png)  ![screenshot 2](assets/screenshot2.png)
 
-A reimagining of the classic *Space Invaders*, but this time, Earth is the enemy. Destroy incoming ships, dodge bullets, and use your ultimate ability to obliterate everything.
+Inspired by the classic *Space Invaders*, except this time, Earth is the enemy. Destroy incoming ships, dodge bullets, and use your ultimate ability to obliterate everything.
 
 Fast reflexes and smart timing are your best weapons. **Good luck, defender!**
 
@@ -43,7 +43,7 @@ For more info about setting up WASM-4, see the [quickstart guide](https://wasm4.
 
 ## :information_source: About this Project
 
-This retro-style shooter game was developed for the [WASM-4](https://wasm4.org) fantasy console as part of a university assignment at *Universidade Estadual de Maringá* (UEM), under the guidance of professor Marcelo G. Malheiros.  
+This game was developed for the [WASM-4](https://wasm4.org) fantasy console as part of an assignment at the *State University of Maringá (UEM)*, under the guidance of Professor Marcelo G. Malheiros.  
 
 All code and assets were created from scratch for learning purposes.
 
