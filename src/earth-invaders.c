@@ -5,7 +5,7 @@
 /* ====== CONSTANTES ====== */
 
 // Limites de objetos simultâneos
-#define MAX_TIROS 6
+#define MAX_TIROS 5
 #define MAX_TIROS_INIMIGOS 7
 #define NUM_ESTRELAS 20
 
@@ -13,25 +13,25 @@
 #define SCREEN_SIZE 160
 #define SPRITE_TOTAL_SIZE 32
 
-// Hitbox da nave do jogador (área colisível menor que o sprite)
+// Hitbox da nave do jogador (a área de colisão é menor que o sprite)
 #define PLAYER_HITBOX_LARGURA 17
 #define PLAYER_HITBOX_ALTURA 10
 #define PLAYER_OFFSET_X 3
 #define PLAYER_OFFSET_Y 2
 
-// Hitbox da nave inimiga (área colisível menor que o sprite)
+// Hitbox da nave inimiga (a área de colisão é menor que o sprite)
 #define INIMIGO_HITBOX_LARGURA 14
 #define INIMIGO_HITBOX_ALTURA 15
 #define INIMIGO_OFFSET_X 9
 #define INIMIGO_OFFSET_Y 6
 
-// Hitbox da nave boss (área colisível menor que o sprite)
+// Hitbox da nave boss (a área de colisão é menor que o sprite)
 #define BOSS_HITBOX_LARGURA 16
 #define BOSS_HITBOX_ALTURA 16
 #define BOSS_OFFSET_X 7
 #define BOSS_OFFSET_Y 4
 
-// Dificuldades (aumenta quantidade de spawns e chance de atirar)
+// Score das dificuldades (aumenta quantidade de spawns e chance do inimigo atirar)
 #define SCORE_FACIL 5
 #define SCORE_MEDIO 20
 #define SCORE_DIFICIL 50
@@ -45,206 +45,20 @@
 int nave_x = (SCREEN_SIZE / 2) - (PLAYER_OFFSET_X + PLAYER_HITBOX_LARGURA / 2);   // Posição inicial x da nave do jogador
 int nave_y = (SCREEN_SIZE / 2) - (PLAYER_OFFSET_Y + PLAYER_HITBOX_ALTURA / 2) - 8;   // Posição inicial y da nave do jogador
 int contador_frames = 0;   // Contador geral de frames para eventos temporizados
-int pontuacao = 0;   // Score do jogador
-uint8_t gamepad_anterior = 0;   // Armazena o estado anterior do gamepad
+int pontuacao = 0;
 int vida_jogador = 3;
 int tela = 0;
 int primeiro_frame_jogo = 1; // 1 = true, 0 = false (para evitar o double click no primeiro frame)
 int delay_inimigos = 40; // <~1 segundo para spawnar inimigos
 int chance_disparo = 1;  // Valor base (1%) para a chance de um inimigo atirar por frame
-
-
-/* ====== ESTRUTURA DO INIMIGO ====== */
+float velocidade_estrelas = 1.0f;   // Velocidade que as estrelas passam pelo background (muda de acordo com a dificuldade)
+int tempo_entre_spawns = 0; // Atualiza a dificuldade baseada na pontuação
 int max_inimigos_ativos;
-
-typedef struct {
-    int x, y;     // Posição
-    int ativo;    // Flag que indica se ele está ativo (1) ou não (0)
-    int tiro_cooldown; // cooldown para o próximo tiro
-} Inimigo;
-
-Inimigo inimigos[10];
-int inimigo_spawn_timer = 0;
-
-void spawn_inimigos() {
-    int ativos = 0;
-
-    // Conta quantos inimigos já estão ativos
-    for (int j = 0; j < max_inimigos_ativos; j++) {
-        if (inimigos[j].ativo) ativos++;
-    }
-
-    // Só spawna um novo inimigo se houver espaço de acordo com a dificuldade
-    if (ativos < max_inimigos_ativos) {
-        for (int i = 0; i < max_inimigos_ativos; i++) {
-            if (!inimigos[i].ativo) {
-                inimigos[i].ativo = 1;
-                inimigos[i].x = rand() % (SCREEN_SIZE - SPRITE_TOTAL_SIZE);
-                inimigos[i].y = -SPRITE_TOTAL_SIZE;
-                inimigos[i].tiro_cooldown = 0;
-                break;
-            }
-        }
-    }
-}
-
-
-/* ====== ESTRUTURA DO BOSS ======*/
-typedef struct {
-    int x, y;
-    int ativo;
-    int vida;
-    int frame_animacao;  // Controla a animação
-    int timer_animacao;  // Controla a velocidade da animação
-} InimigoBoss;
-
-InimigoBoss boss = {0, 0, 0, 0, 0, 0}; // x, y, ativo, vida, frame_animacao, timer_animacao
-
-void spawn_boss() {
-    if (!boss.ativo) {
-        boss.ativo = 1;
-        boss.vida = 3;
-        boss.x = rand() % (SCREEN_SIZE - SPRITE_TOTAL_SIZE);
-        boss.y = -SPRITE_TOTAL_SIZE;
-        boss.frame_animacao = 0;
-        boss.timer_animacao = 0;
-    }
-}
-
-
-/* ====== PARTÍCULAS ====== */
-typedef struct {
-    int32_t x, y;      // Posição
-    int dx, dy;        // Velocidade
-    int vida;          // Duração
-    uint32_t tamanho;  // Tamanho
-} Particula;
-
-Particula particulas[MAX_PARTICULAS];
-int particulas_ativas = 0;
-
-void explosao_particulas_boss(int x, int y) {
-    tone(300, 15, 35, TONE_NOISE);
-    tone(400, 20, 30, TONE_PULSE2);
-    
-    for (int i = 0; i < MAX_PARTICULAS; i++) {
-        if (particulas_ativas < MAX_PARTICULAS) {
-            particulas[particulas_ativas] = (Particula){
-                .x = x + BOSS_OFFSET_X + (BOSS_HITBOX_LARGURA/2), // Posição X (centro do boss)
-                .y = y + BOSS_OFFSET_Y + (BOSS_HITBOX_ALTURA/2), // Posição Y (centro do boss)
-                .dx = (rand() % 5) - 2, // Velocidade horiz. aleatória (-2 a +2px p/ frame)
-                .dy = (rand() % 5) - 4, // Velocidade vert. aleatória (-4 a 0px p/ frame)
-                .vida = 15 + (rand() % 20), // Tempo de vida aleatório (14 a 34 frames)
-                .tamanho = 4  // Tamanho inicial fixo de 4 pixels
-            };
-            particulas_ativas++;
-        }
-    }
-}
-
-
-/* ====== SISTEMA DE TIROS ====== */
-int tiro_cooldown = 0;   // Timer entre disparos para saber quando podemos atirar
-
-typedef struct {
-    int x, y;    // Posição
-    int ativo;   // Flag que indica se ele está ativo (1) ou não (0)
-} Tiro;
-
-Tiro tiros[MAX_TIROS];
-Tiro tiros_inimigos[MAX_TIROS_INIMIGOS];
-
-void disparar_tiro_jogador(int x, int y) {
-    for (int i = 0; i < MAX_TIROS; i++) {
-        if (!tiros[i].ativo) {
-            tiros[i].x = x + PLAYER_OFFSET_X + (PLAYER_HITBOX_LARGURA/2);  // Centro da hitbox da nave
-            tiros[i].y = y + PLAYER_OFFSET_Y;  // Acima da hitbox
-            tiros[i].ativo = 1;
-            tone(600, 5, 50, TONE_PULSE2);
-            break;
-        }
-    }
-}
-
-void disparar_tiro_inimigo(int x, int y) {
-    for (int i = 0; i < MAX_TIROS_INIMIGOS; i++) {
-        if (!tiros_inimigos[i].ativo) {
-            tiros_inimigos[i].x = x + INIMIGO_OFFSET_X + (INIMIGO_HITBOX_LARGURA/2);   //Centraliza no hitbox
-            tiros_inimigos[i].y = y + INIMIGO_OFFSET_Y + INIMIGO_HITBOX_ALTURA;   //Parte inferior do hitbox
-            tiros_inimigos[i].ativo = 1;
-            tone(300, 5, 35, TONE_PULSE1);
-            break;
-        }
-    }
-}
-
-
-/* ====== ESTRUTURA DA ESTRELA ======*/
-int estrelas_inicializadas = 0;
-
-typedef struct {
-    int x, y;
-} Estrela;
-
-Estrela estrelas[NUM_ESTRELAS];
-
-
-/* ====== ULT ======*/
-int explosao_ativa = 0;
-int explosao_timer = 0;
-int explosao_cooldown = 0;
-
-
-// Função auxiliar para converter int para string (mostrar pontuação)
-void int_to_str(int num, char* buffer) {
-    int i = 0;
-    if (num == 0) {
-        buffer[i++] = '0';
-    } else {
-        while (num > 0) {
-            buffer[i++] = '0' + (num % 10);
-            num /= 10;
-        }
-    }
-    buffer[i] = '\0';
-
-    // Inverte a string
-    for (int j = 0; j < i / 2; j++) {
-        char tmp = buffer[j];
-        buffer[j] = buffer[i - j - 1];
-        buffer[i - j - 1] = tmp;
-    }
-}
-
-
-// Atualiza a dificuldade baseada na pontuação
-int tempo_entre_spawns = 0;
-
-void atualizar_dificuldade() {
-
-    if (pontuacao >= SCORE_EXTREMO) {
-        tempo_entre_spawns = 45;
-        max_inimigos_ativos = 4;
-    }
-
-    else if (pontuacao >= SCORE_DIFICIL) {
-        tempo_entre_spawns = 45;
-        max_inimigos_ativos = 4;
-    }
-
-    else if (pontuacao >= SCORE_MEDIO) {
-        tempo_entre_spawns = 55;
-        max_inimigos_ativos = 3;
-
-    } else if (pontuacao >= SCORE_FACIL) {
-        tempo_entre_spawns = 40;
-        max_inimigos_ativos = 2;
-
-    } else {
-        tempo_entre_spawns = 1;
-        max_inimigos_ativos = 1;
-    }
-}
+int tiro_cooldown = 0;
+int estrelas_inicializadas = 0; // Flag que controla se as estrelas de fundo foram criadas
+int explosao_ativa = 0; // Flag que controla se a ult está atualmente ativa
+int explosao_timer = 0; // Contador regressivo para duração da explosão
+int explosao_cooldown = 0;  // Tempo de recarga da ultimate (em frames)
 
 
 /* ====== SPRITES ====== */
@@ -278,26 +92,360 @@ const uint8_t heart[] = {
 };
 
 
-/* ====== MAIN ====== */
-void update () {
+/* ====== ESTRUTURA DO INIMIGO ====== */
+typedef struct {
+    int x, y;     // Posição
+    int ativo;    // Flag que indica se ele está ativo (1) ou não (0)
+    int tiro_cooldown; // Cooldown para o próximo tiro
+} Inimigo;
 
-    PALETTE[0] = 0x000000; // 1 - Preto
-    PALETTE[1] = 0x6CEDED; // 2 - Azul elétrico
-    PALETTE[2] = 0x2d879a; // 3 - Azul
-    PALETTE[3] = 0x404040; // 4 - Cinza Escuro
+Inimigo inimigos[10];
+int inimigo_spawn_timer = 0;
 
+void spawn_inimigos() {
+    int ativos = 0;
+
+    // Conta quantos inimigos já estão ativos
+    for (int j = 0; j < max_inimigos_ativos; j++) {
+        if (inimigos[j].ativo) ativos++;
+    }
+
+    // Só spawna um novo inimigo se houver espaço de acordo com a dificuldade
+    if (ativos < max_inimigos_ativos) {
+        for (int i = 0; i < max_inimigos_ativos; i++) {
+            if (!inimigos[i].ativo) {
+                inimigos[i].ativo = 1;
+                inimigos[i].x = rand() % (SCREEN_SIZE - SPRITE_TOTAL_SIZE);
+                inimigos[i].y = -SPRITE_TOTAL_SIZE;
+                inimigos[i].tiro_cooldown = 0;
+                break;
+            }
+        }
+    }
+}
+
+void atualizar_inimigos() {
+    if (delay_inimigos > 0) {
+        delay_inimigos--;
+    } else {
+        if (inimigo_spawn_timer >= tempo_entre_spawns) {
+            spawn_inimigos();
+            inimigo_spawn_timer = 0;
+        }
+    }
+
+    // Atualiza cada inimigo
+    for (int i = 0; i < max_inimigos_ativos; i++) {
+        if (inimigos[i].ativo) {
+            inimigos[i].y += 1; // Movimenta 1 pixel
+
+            // Verifica se saiu da tela
+            if (inimigos[i].y > SCREEN_SIZE) {
+                inimigos[i].ativo = 0;
+                vida_jogador--;
+                
+                if (vida_jogador <= 0) {
+                    contador_frames = 0;
+                    tone(150, 5, 45, TONE_PULSE1);
+                    tela = 3; // Game Over
+                } else {
+                    tone(120, 5, 45, TONE_NOISE);
+                }
+            } 
+            // Desenha inimigo
+            else {
+                *DRAW_COLORS = 0x0023;
+                blit(nave_inimiga, inimigos[i].x, inimigos[i].y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
+            }
+        }
+    }
+}
+
+
+/* ====== ESTRUTURA DO BOSS ======*/
+typedef struct {
+    int x, y;
+    int ativo;
+    int vida;
+    int frame_animacao;  // Controla a animação
+    int timer_animacao;  // Controla a velocidade da animação
+} InimigoBoss;
+
+InimigoBoss boss = {0, 0, 0, 0, 0, 0};
+
+void spawn_boss() {
+    if (!boss.ativo) {
+        boss.ativo = 1;
+        boss.vida = 3;
+        boss.x = rand() % (SCREEN_SIZE - SPRITE_TOTAL_SIZE);
+        boss.y = -SPRITE_TOTAL_SIZE;
+        boss.frame_animacao = 0;
+        boss.timer_animacao = 0;
+    }
+}
+
+void atualizar_boss() {
+    // A cada 2 segundos, 40% de chance de spawnar o boss
+    if (contador_frames % 120 == 0) {
+        if ((rand() % 100) < 40) {
+            spawn_boss();
+        }
+    }
     
+    if (boss.ativo) {
+        if (contador_frames % 2 == 0) {
+            boss.y += 1;    // Movimenta 1 pixel a cada 2 frames
+        }
 
-    uint8_t gamepad = *GAMEPAD1;    // Leitura do controle
+        if (boss.y > SCREEN_SIZE) {
+            boss.ativo = 0;
+            vida_jogador--;
+            if (vida_jogador <= 0) {
+                contador_frames = 0;
+                tone(150, 5, 45, TONE_PULSE1);
+                tela = 3;
+            } else {
+                tone(120, 5, 45, TONE_NOISE);
+            }
 
-    // Inicializa as estrelas em uma posição fixa para o menu, e aleatórias para as outras
+        } else {
+            boss.timer_animacao++;
+            if (boss.timer_animacao >= 10) {  // Muda sprite a cada 10 frames
+                boss.timer_animacao = 0;
+                boss.frame_animacao = (boss.frame_animacao + 1) % 4;    // Entre o sprite 0, 1, 2 e 3
+            }
+
+            // Renderiza o sprite correto (de acordo com a animação)
+            *DRAW_COLORS = 0x0032;
+            switch (boss.frame_animacao) {
+                case 0: blit(nave_inimiga_boss1, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP); break;
+                case 1: blit(nave_inimiga_boss2, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP); break;
+                case 2: blit(nave_inimiga_boss3, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP); break;
+                case 3: blit(nave_inimiga_boss4, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP); break;
+            }
+        }
+    }
+}
+
+
+/* ====== PARTÍCULAS ====== */
+typedef struct {
+    int32_t x, y;      // Posição
+    int dx, dy;        // Velocidade
+    int vida;          // Duração
+    uint32_t tamanho;
+} Particula;
+
+Particula particulas[MAX_PARTICULAS];
+int particulas_ativas = 0;
+
+void explosao_particulas_boss(int x, int y) {
+    tone(300, 15, 30, TONE_NOISE);
+    tone(400, 20, 25, TONE_PULSE2);
+    
+    for (int i = 0; i < MAX_PARTICULAS; i++) {
+        if (particulas_ativas < MAX_PARTICULAS) {
+            particulas[particulas_ativas] = (Particula){
+                .x = x + BOSS_OFFSET_X + (BOSS_HITBOX_LARGURA/2), // Posição X (centro do boss)
+                .y = y + BOSS_OFFSET_Y + (BOSS_HITBOX_ALTURA/2), // Posição Y (centro do boss)
+                .dx = (rand() % 5) - 2, // Velocidade horiz. aleatória (-2 a +2px p/ frame)
+                .dy = (rand() % 5) - 4, // Velocidade vert. aleatória (-4 a 0px p/ frame)
+                .vida = 15 + (rand() % 20), // Tempo de vida aleatório (14 a 34 frames)
+                .tamanho = 4  // Tamanho inicial fixo de 4 pixels
+            };
+            particulas_ativas++;
+        }
+    }
+}
+
+void atualizar_particulas() {
+    // Verifica se existem partículas ativas para processar
+    if (particulas_ativas > 0) {
+        *DRAW_COLORS = 3;
+
+        // Move as partículas e calcula seu tamanho baseado no tempo de vida restante
+        for (int i = 0; i < particulas_ativas; i++) {
+            particulas[i].x += particulas[i].dx;
+            particulas[i].y += particulas[i].dy;
+            particulas[i].tamanho = (uint32_t)(particulas[i].vida / 25) + 1;
+            particulas[i].vida--;
+
+            rect(particulas[i].x, particulas[i].y, particulas[i].tamanho, particulas[i].tamanho);
+
+            // Remoção de partículas que já foram expiradas
+            if (particulas[i].vida <= 0) {
+                particulas[i] = particulas[--particulas_ativas];
+                i--;
+            }
+        }
+    }
+}
+
+
+/* ====== SISTEMA DE TIROS ====== */
+typedef struct {
+    int x, y;    // Posição
+    int ativo;   // Flag que indica se ele está ativo (1) ou não (0)
+} Tiro;
+
+Tiro tiros[MAX_TIROS];
+Tiro tiros_inimigos[MAX_TIROS_INIMIGOS];
+
+void disparar_tiro_jogador(int x, int y) {
+    for (int i = 0; i < MAX_TIROS; i++) {
+        if (!tiros[i].ativo) {
+            tiros[i].x = x + PLAYER_OFFSET_X + (PLAYER_HITBOX_LARGURA/2);  // Centro da hitbox da nave
+            tiros[i].y = y + PLAYER_OFFSET_Y;  // Acima da hitbox
+            tiros[i].ativo = 1;
+            tone(600, 5, 45, TONE_PULSE2);
+            break;
+        }
+    }
+}
+
+void disparar_tiro_inimigo(int x, int y) {
+    for (int i = 0; i < MAX_TIROS_INIMIGOS; i++) {
+        // Checa colisão com o jogador
+        if (!tiros_inimigos[i].ativo) {
+            tiros_inimigos[i].x = x + INIMIGO_OFFSET_X + (INIMIGO_HITBOX_LARGURA/2);   //Centraliza no hitbox
+            tiros_inimigos[i].y = y + INIMIGO_OFFSET_Y + INIMIGO_HITBOX_ALTURA;   //Parte inferior do hitbox
+            tiros_inimigos[i].ativo = 1;
+            tone(300, 5, 30, TONE_PULSE1);
+            break;
+        }
+    }
+}
+
+void atualizar_tiros_inimigos() {
+    // Atualiza chance de disparo de acordo com a dificuldade
+    if (pontuacao >= SCORE_EXTREMO) chance_disparo = 2;
+    else if (pontuacao >= SCORE_DIFICIL) chance_disparo = 1;
+    else if (pontuacao >= SCORE_MEDIO) chance_disparo = 2;
+    else if (pontuacao >= SCORE_FACIL) chance_disparo = 1;
+    else chance_disparo = 3;
+
+    // Processa decisão de disparo
+    for (int i = 0; i < max_inimigos_ativos; i++) {
+        if (inimigos[i].ativo && inimigos[i].y < 70) {
+            if (inimigos[i].tiro_cooldown > 0) {
+                inimigos[i].tiro_cooldown--;
+            } else if ((rand() % 100) < chance_disparo) {
+                disparar_tiro_inimigo(inimigos[i].x, inimigos[i].y);
+                inimigos[i].tiro_cooldown = 90;
+            }
+        }
+    }
+
+    // Processa movimento e colisão dos tiros
+    for (int i = 0; i < MAX_TIROS_INIMIGOS; i++) {
+        if (tiros_inimigos[i].ativo) {
+            tiros_inimigos[i].y += 2;
+            
+            // Colisão com jogador
+            if (tiros_inimigos[i].x >= nave_x + PLAYER_OFFSET_X &&
+                tiros_inimigos[i].x <= nave_x + PLAYER_OFFSET_X + PLAYER_HITBOX_LARGURA &&
+                tiros_inimigos[i].y >= nave_y + PLAYER_OFFSET_Y - 5 &&  // Não sei porque precisa do -5, mas se não tiver o hitbox fica errado
+                tiros_inimigos[i].y <= nave_y + PLAYER_OFFSET_Y + PLAYER_HITBOX_ALTURA) {
+                
+                tiros_inimigos[i].ativo = 0;
+                vida_jogador--;
+                
+                if (vida_jogador <= 0) {
+                    contador_frames = 0;
+                    tone(150, 5, 45, TONE_PULSE1);
+                    tela = 3; // Game Over
+                } else {
+                    tone(120, 5, 45, TONE_NOISE);
+                }
+            }
+            
+            // Remove tiros fora da tela e os desenha
+            if (tiros_inimigos[i].y > SCREEN_SIZE) {
+                tiros_inimigos[i].ativo = 0;
+            } 
+            // Desenha tiro
+            else {
+                *DRAW_COLORS = 2;
+                rect(tiros_inimigos[i].x, tiros_inimigos[i].y, 1, 3);
+            }
+        }
+    }
+}
+
+void atualizar_tiros_jogador(uint8_t gamepad) {
+    // Atira se apertar X (o cooldown é para evitar que o jogador dispare continuamente)
+    if ((gamepad & BUTTON_1) && tiro_cooldown == 0) {
+        disparar_tiro_jogador(nave_x, nave_y);
+        tiro_cooldown = 15; // Reinicia o cooldown para o tempo base de 15 frames
+    }
+
+    *DRAW_COLORS = 3;
+    for (int i = 0; i < MAX_TIROS; i++) {
+        if (tiros[i].ativo) {
+            tiros[i].y -= 2;
+
+            if (tiros[i].y < 0) {
+                tiros[i].ativo = 0;
+            } else {
+                // Colisão com inimigos
+                for (int j = 0; j < max_inimigos_ativos; j++) {
+                    if (inimigos[j].ativo &&
+                        tiros[i].x >= inimigos[j].x + INIMIGO_OFFSET_X &&
+                        tiros[i].x <= inimigos[j].x + INIMIGO_OFFSET_X + INIMIGO_HITBOX_LARGURA + 3 &&
+                        tiros[i].y >= inimigos[j].y + INIMIGO_OFFSET_Y &&
+                        tiros[i].y <= inimigos[j].y + INIMIGO_OFFSET_Y + INIMIGO_HITBOX_ALTURA) {
+
+                        tiros[i].ativo = 0;
+                        inimigos[j].ativo = 0;
+                        pontuacao++;
+                        tone(100, 5, 45, TONE_NOISE);
+                    }
+                }
+
+                // Colisão com boss
+                if (boss.ativo &&
+                    tiros[i].x >= boss.x + BOSS_OFFSET_X &&
+                    tiros[i].x <= boss.x + BOSS_OFFSET_X + BOSS_HITBOX_LARGURA &&
+                    tiros[i].y >= boss.y + BOSS_OFFSET_Y &&
+                    tiros[i].y <= boss.y + BOSS_OFFSET_Y + BOSS_HITBOX_ALTURA) {
+
+                    tiros[i].ativo = 0;
+                    boss.vida--;
+                    tone(100, 5, 45, TONE_NOISE);
+
+                    if (boss.vida <= 0) {
+                        explosao_particulas_boss(boss.x, boss.y);
+                        boss.ativo = 0;
+                        pontuacao++;
+                    }
+                }
+            }
+
+            if (tiros[i].ativo) {
+                rect(tiros[i].x, tiros[i].y, 1, 1);
+            }
+        }
+    }
+}
+
+
+/* ====== ESTRELAS  ======*/
+typedef struct {
+    int x;
+    float y;
+} Estrela;
+
+Estrela estrelas[NUM_ESTRELAS];
+
+// Inicializa estrelas com posições fixas para as telas de menu e história, e aleatórias para as outras telas, usando o estado do gamepad para variar a semente do gerador de números aleatórios
+void inicializar_estrelas(uint8_t gamepad) {
     if (!estrelas_inicializadas) {
         if (tela == 0 || tela == 1) {
             Estrela fixas[NUM_ESTRELAS] = {
-                {10, 20}, {50, 40}, {90, 15}, {130, 30}, {30, 80},
-                {70, 60}, {110, 90}, {150, 70}, {20, 120}, {60, 110},
+                {10, 20}, {50, 40}, {90, 6}, {130, 30}, {30, 70},
+                {70, 60}, {110, 90}, {150, 70}, {20, 110}, {60, 110},
                 {100, 140}, {140, 130}, {40, 30}, {80, 50}, {120, 10},
-                {160, 20}, {25, 150}, {75, 130}, {115, 80}, {155, 100}
+                {160, 20}, {25, 150}, {120, 103}, {115, 80}, {155, 100}
             };
             for (int i = 0; i < NUM_ESTRELAS; i++) {
                 estrelas[i] = fixas[i];
@@ -312,511 +460,371 @@ void update () {
 
         estrelas_inicializadas = 1;
     }
+}
 
+// Desenha estrelas sem efeito de movimento
+void desenhar_estrelas_estaticas() {
+    *DRAW_COLORS = 4;
+    for (int i = 0; i < NUM_ESTRELAS; i++) {
+        rect(estrelas[i].x, (int)estrelas[i].y, 1, 1);
+    }
+}
+
+// Desenha estrelas no fundo com efeito de movimento de acordo com a pontuação
+void desenhar_estrelas_dinamicas() {
+    if (pontuacao >= SCORE_EXTREMO)
+        velocidade_estrelas = 1.6f;
+    else if (pontuacao >= SCORE_DIFICIL)
+        velocidade_estrelas = 1.4f;
+    else if (pontuacao >= SCORE_MEDIO)
+        velocidade_estrelas = 1.2f;
+    else
+        velocidade_estrelas = 1.0f;
+
+    *DRAW_COLORS = 4;
+    for (int i = 0; i < NUM_ESTRELAS; i++) {
+        estrelas[i].y += velocidade_estrelas; // Move estrela para baixo
+
+        //Se saiu da tela, reinicia no topo em nova posição x
+        if (estrelas[i].y >= SCREEN_SIZE) {
+            estrelas[i].y = 0;
+            estrelas[i].x = rand() % SCREEN_SIZE;
+        }
+        rect(estrelas[i].x, (int)estrelas[i].y, 1, 1);
+    }
+}
+
+
+/* ====== ULT ======*/
+void processar_explosao_ult(uint8_t gamepad) {
+    if ((gamepad & BUTTON_2) && explosao_cooldown == 0 && !explosao_ativa) {
+        explosao_ativa = 1;
+        explosao_timer = 15;
+        explosao_cooldown = 480;
+
+        // Remove todos os inimigos ativos
+        for (int i = 0; i < max_inimigos_ativos; i++) {
+            if (inimigos[i].ativo) {
+                inimigos[i].ativo = 0;
+                pontuacao++;
+            }
+        }
+
+        // Remove todos os tiros inimigos
+        for (int i = 0; i < MAX_TIROS_INIMIGOS; i++) {
+            tiros_inimigos[i].ativo = 0;
+        }
+
+        // Remove todos os tiros do jogador
+        for (int i = 0; i < MAX_TIROS; i++) {
+            tiros[i].ativo = 0;
+        }
+
+        // Remove o boss
+        if (boss.ativo) {
+            boss.ativo = 0;
+            pontuacao++;
+        }
+
+        tone(400, 5, 65, TONE_PULSE1);
+        tone(60, 30, 85, TONE_NOISE);
+    }
+}
+
+void desenhar_explosao_ult() {
+    if (explosao_ativa) {
+        // Calcula o centro da nave considerando offset e hitbox do jogador
+        int centro_x = nave_x + PLAYER_OFFSET_X + (PLAYER_HITBOX_LARGURA / 2);
+        int centro_y = nave_y + PLAYER_OFFSET_Y + (PLAYER_HITBOX_ALTURA / 2);
+        int raio = (SCREEN_SIZE + 100) * (15 - explosao_timer) / 15;
+        uint32_t diametro = (uint32_t)(raio * 2);
+
+        *DRAW_COLORS = 2;
+        oval(centro_x - raio, centro_y - raio, diametro, diametro);
+
+        explosao_timer--;
+        if (explosao_timer <= 0) {
+            explosao_ativa = 0;
+        }
+    }
+}
+
+void desenhar_barra_cooldown_explosao() {
+    if (explosao_cooldown > 0) {
+        int largura_total = 40;
+        int largura_barra = largura_total * (480 - explosao_cooldown) / 480;
+
+        *DRAW_COLORS = 3;
+        rect(3, 17, (uint32_t)largura_total, 4); // Contorno
+
+        *DRAW_COLORS = 2;
+        rect(3, 17, (uint32_t)largura_barra, 4); // Parte preenchida
+    }
+}
+
+
+/* ====== DIFICULDADE ====== */
+// Ajusta a dificuldade conforme a pontuação
+void atualizar_dificuldade() {
+
+    if (pontuacao >= SCORE_EXTREMO) {
+        tempo_entre_spawns = 45;
+        max_inimigos_ativos = 4;
+    }
+
+    else if (pontuacao >= SCORE_DIFICIL) {
+        tempo_entre_spawns = 45;
+        max_inimigos_ativos = 4;
+    }
+
+    else if (pontuacao >= SCORE_MEDIO) {
+        tempo_entre_spawns = 55;
+        max_inimigos_ativos = 3;
+
+    } else if (pontuacao >= SCORE_FACIL) {
+        tempo_entre_spawns = 40;
+        max_inimigos_ativos = 2;
+
+    } else {
+        tempo_entre_spawns = 1;
+        max_inimigos_ativos = 1;
+    }
+}
+
+/* ====== TELAS ======*/
+void desenhar_menu() {
+    *DRAW_COLORS = 2;
+    text("Earth Invaders", 25, 15);
+    text("Press X to start", 16, 85);
+
+    *DRAW_COLORS = 3;
+    text("\x84 \x85 \x86 \x87: Move", 10, 120);
+    text("\x80: Shoot", 10, 130);
+    text("\x81: Ult", 10, 140);
+
+    *DRAW_COLORS = 0x0324;
+    blit(nave, nave_x, nave_y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
+}
+
+void desenhar_historia() {
+    *DRAW_COLORS = 2;
+    text("The year is 2552.", 8, 5);
+        
+    text("Humans from Earth", 10, 25);
+    text("are invading your", 10, 35);
+    text("home planet. They", 10, 45);
+    text("seek to exploit", 10, 55);
+    text("its resources and", 10, 65);
+    text("enslave your kind.", 10, 75);
+
+    text("You are the last", 10, 95);
+    text("line of defense.", 10, 105);
+
+    text("Don't let them pass.", 2, 125);
+
+    *DRAW_COLORS = 3;
+    text("Press X to begin", 13, 143);
+}
+
+// Função auxiliar para converter int para string (mostrar pontuação)
+void int_to_str(int num, char* buffer) {
+    int i = 0;
+    if (num == 0) {
+        buffer[i++] = '0';
+    } else {
+        while (num > 0) {
+            buffer[i++] = '0' + (num % 10);
+            num /= 10;
+        }
+    }
+    buffer[i] = '\0';
+
+    // Inverte a string
+    for (int j = 0; j < i / 2; j++) {
+        char tmp = buffer[j];
+        buffer[j] = buffer[i - j - 1];
+        buffer[i - j - 1] = tmp;
+    }
+}
+
+void desenhar_game_over() {
+    // Centraliza "Game Over" (8 caracteres)
+    *DRAW_COLORS = 2;
+    text("Game Over", 44, 45);
+
+    char score_text[12] = "Score: ";
+    char num_str[4] = {0};
+    int_to_str(pontuacao, num_str); 
+    int score_len = 7;  // "Score: " tem 7 caracteres
+    for (int i = 0; num_str[i] != '\0'; i++) {
+        score_text[score_len++] = num_str[i];
+    }
+    score_text[score_len] = '\0';
+
+    // Centralização dinâmica (calcula posição X)
+    int text_width = score_len * 8;  // 8px por caractere
+    int pos_x = (SCREEN_SIZE - text_width) / 2;
+    
+    *DRAW_COLORS = 2;
+    text(score_text, pos_x, 65);  // Posição Y ajustada para tela de game over
+
+    *DRAW_COLORS = 3;
+    text("Press X to retry", 17, 105);
+}
+
+void desenhar_score() {
+    *DRAW_COLORS = 2;
+    char texto[20] = "Score: ";
+    char num_str[10];
+    int_to_str(pontuacao, num_str);
+
+    int i = 7;
+    for (int j = 0; num_str[j] != '\0'; j++) {
+        texto[i++] = num_str[j];
+    }
+    texto[i] = '\0';
+
+    text(texto, 70, 5);
+}
+
+void desenhar_vida() {
+    for (int i = 0; i < vida_jogador; i++) {
+        *DRAW_COLORS = 0x0023;
+        blit(heart, i * 13, -5, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
+    }
+}
+
+void resetar_jogo() {
+    nave_x = (SCREEN_SIZE / 2) - (PLAYER_OFFSET_X + PLAYER_HITBOX_LARGURA / 2);
+    nave_y = (SCREEN_SIZE / 2) - (PLAYER_OFFSET_Y + PLAYER_HITBOX_ALTURA / 2) - 8;
+    pontuacao = 0;
+    contador_frames = 0;
+    explosao_ativa = 0;
+    explosao_timer = 0;
+    explosao_cooldown = 0;
+    tiro_cooldown = 0;
+    vida_jogador = 3;
+    primeiro_frame_jogo = 1;
+    delay_inimigos = 40;
+    for (int i = 0; i < MAX_TIROS; i++) tiros[i].ativo = 0;
+    for (int i = 0; i < max_inimigos_ativos; i++) inimigos[i].ativo = 0;
+    for (int i = 0; i < MAX_TIROS_INIMIGOS; i++) tiros_inimigos[i].ativo = 0;
+    boss.ativo = 0;
+    boss.x = 0;
+    boss.y = 0;
+    boss.vida = 0;
+    contador_frames = 0;
+}
+
+void atualizar_contadores() {
+    contador_frames++;  // Tempo total
+    if (tiro_cooldown > 0) tiro_cooldown--;    // Cooldown entre tiros
+    if (explosao_cooldown > 0) explosao_cooldown--; // Cooldown da ult
+    inimigo_spawn_timer++;  // Tempo desde o último spawn de inimigo 
+}
+
+// Movimento da nave com base nos inputs
+void mover_nave(uint8_t gamepad) {
+    if (gamepad & BUTTON_LEFT)  nave_x -= 2;
+    if (gamepad & BUTTON_RIGHT) nave_x += 2;
+    if (gamepad & BUTTON_UP)    nave_y -= 2;
+    if (gamepad & BUTTON_DOWN)  nave_y += 2;
+}
+
+// Impede que a nave ultrapasse os limites da tela
+void limitar_tela() {
+    if (nave_x < -PLAYER_OFFSET_X)
+        nave_x = -PLAYER_OFFSET_X;
+
+    if (nave_x > SCREEN_SIZE - (PLAYER_OFFSET_X + PLAYER_HITBOX_LARGURA))
+        nave_x = SCREEN_SIZE - (PLAYER_OFFSET_X + PLAYER_HITBOX_LARGURA);
+
+    if (nave_y < -PLAYER_OFFSET_Y)
+        nave_y = -PLAYER_OFFSET_Y;
+
+    if (nave_y > SCREEN_SIZE - (PLAYER_OFFSET_Y + PLAYER_HITBOX_ALTURA) + 5)
+        nave_y = SCREEN_SIZE - (PLAYER_OFFSET_Y + PLAYER_HITBOX_ALTURA) + 5;
+}
+
+
+/* ====== START ====== */
+// Função que é chamada uma única vez ao inicializar o jogo
+void start() {
+    PALETTE[0] = 0x000000; // 1 - Preto
+    PALETTE[1] = 0x6CEDED; // 2 - Azul elétrico
+    PALETTE[2] = 0x2d879a; // 3 - Azul
+    PALETTE[3] = 0x404040; // 4 - Cinza
+}
+
+
+/* ====== UPDATE ====== */
+// Função que é chamada a cada frame (60 vezes por segundo)
+void update() {
+    uint8_t gamepad = *GAMEPAD1;
+    inicializar_estrelas(gamepad);
 
     /* ====== TELA MENU ====== */
     if (tela == 0) {
+        desenhar_estrelas_estaticas();
+        desenhar_menu();
 
-        // Desenha as estrelas estáticas
-        *DRAW_COLORS = 4;
-        for (int i = 0; i < NUM_ESTRELAS; i++) {
-            rect(estrelas[i].x, estrelas[i].y, 1, 1);
-        }
-
-        *DRAW_COLORS = 2;
-        text("Earth Invaders", 25, 15);
-        text("Press X to start", 16, 85);
-
-        *DRAW_COLORS = 3;
-        text("\x84 \x85 \x86 \x87: Move", 10, 120);
-        text("\x80: Shoot", 10, 130);
-        text("\x81: Ult", 10, 140);
-
-        *DRAW_COLORS = 0x0324;
-        blit(nave, nave_x, nave_y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
-
-        // Pressionar X para ir na próxima tela
         if (gamepad & BUTTON_1) {
-            tone(200, 10, 50, TONE_PULSE1);
-            contador_frames = 0;    // Reseta o contador para evitar duplo clique
+            tone(200, 10, 45, TONE_PULSE1);
+            contador_frames = 0;
             tela = 1;
         }
     }
 
     /* ====== TELA HISTÓRIA ====== */
     else if (tela == 1) {
-
-        // Desenha as estrelas estáticas
-        *DRAW_COLORS = 4;
-        for (int i = 0; i < NUM_ESTRELAS; i++) {
-            rect(estrelas[i].x, estrelas[i].y, 1, 1);
-        }
-
+        desenhar_estrelas_estaticas();
+        desenhar_historia();
         contador_frames++;
 
-        *DRAW_COLORS = 2;
-        text("The year is 2552.", 8, 5);
-        
-        text("Humans from Earth", 10, 25);
-        text("are invading your", 10, 35);
-        text("home planet. They", 10, 45);
-        text("seek to exploit", 10, 55);
-        text("its resources and", 10, 65);
-        text("enslave your kind.", 10, 75);
-
-        text("You are the last", 10, 95);
-        text("line of defense.", 10, 105);
-
-        text("Don't let them pass.", 2, 125);
-
-        *DRAW_COLORS = 3;
-        text("Press X to begin", 13, 143);
-
-        // Vai para o jogo (só permite depois de 30 frames, pra evitar apertar 2x sem querer)
-        if (contador_frames > 30 && (gamepad & BUTTON_1) && !(gamepad_anterior & BUTTON_1)) {
-            tone(400, 10, 50, TONE_PULSE2);
+        // Vai para o jogo (só permite depois de 30 frames, pra evitar double click)
+        if ((gamepad & BUTTON_1) && contador_frames > 30) {
+            tone(400, 10, 45, TONE_PULSE2);
             contador_frames = 0;
             tela = 2;
         }
-
     }
 
     /* ====== TELA JOGO ====== */
     else if (tela == 2) {
-        atualizar_dificuldade();          // Ajusta a dificuldade conforme a pontuação
-        contador_frames++;                // Contador de frames para temporização
+        atualizar_dificuldade();
+        atualizar_contadores();
+        desenhar_estrelas_dinamicas();
 
-        // Delay inicial para evitar double click quando chega na tela atual
-        if (primeiro_frame_jogo == 1) {
-            primeiro_frame_jogo = 0; // Marca como não é mais o primeiro frame
-            tiro_cooldown = 15;
-        }
+        mover_nave(gamepad);
+        limitar_tela();
+        if (contador_frames >= 15) atualizar_tiros_jogador(gamepad);
 
-        // Background animado de estrelas
-        *DRAW_COLORS = 4;
-        for (int i = 0; i < NUM_ESTRELAS; i++) {
-            estrelas[i].y += 1;  // Desce 1 pixel por vez
-            if (estrelas[i].y >= SCREEN_SIZE) {
-                estrelas[i].y = 0;
-                estrelas[i].x = rand() % SCREEN_SIZE;
-            }
-            rect(estrelas[i].x, estrelas[i].y, 1, 1);
-        }
+        atualizar_inimigos();
+        atualizar_tiros_inimigos();
+        atualizar_boss();
+        atualizar_particulas();
 
-        // Movimento da nave com as setas
-        if (gamepad & BUTTON_LEFT)  nave_x -= 2;
-        if (gamepad & BUTTON_RIGHT) nave_x += 2;
-        if (gamepad & BUTTON_UP)    nave_y -= 2;
-        if (gamepad & BUTTON_DOWN)  nave_y += 2;
+        processar_explosao_ult(gamepad);
+        desenhar_explosao_ult();
 
-        /* ====== Limites da Tela ====== */
-        if (nave_x < -PLAYER_OFFSET_X)  //Esquerda
-            nave_x = -PLAYER_OFFSET_X;
-
-        if (nave_x > SCREEN_SIZE - (PLAYER_OFFSET_X + PLAYER_HITBOX_LARGURA)) //Direita
-            nave_x = SCREEN_SIZE - (PLAYER_OFFSET_X + PLAYER_HITBOX_LARGURA);
-
-        if (nave_y < -PLAYER_OFFSET_Y) // Cima
-            nave_y = -PLAYER_OFFSET_Y;
-
-        if (nave_y > SCREEN_SIZE - (PLAYER_OFFSET_Y + PLAYER_HITBOX_ALTURA) + 5) //Baixo
-            nave_y = SCREEN_SIZE - (PLAYER_OFFSET_Y + PLAYER_HITBOX_ALTURA) + 5;
-        
-        // Verifica se existem partículas ativas para processar (da eliminação do boss)
-        if (particulas_ativas > 0) {
-            *DRAW_COLORS = 3;
-
-            // Move as partículas e calcula seu tamanho baseado no tempo de vida restante
-            for (int i = 0; i < particulas_ativas; i++) {
-                particulas[i].x += particulas[i].dx;
-                particulas[i].y += particulas[i].dy;
-                particulas[i].tamanho = (uint32_t)(particulas[i].vida / 20) + 1;
-                particulas[i].vida--;
-                
-                rect(particulas[i].x, particulas[i].y, particulas[i].tamanho, particulas[i].tamanho);
-                
-                // Remoção de partículas que já foram expiradas
-                if (particulas[i].vida <= 0) {
-                    particulas[i] = particulas[--particulas_ativas];
-                    i--;
-                }
-            }
-        }
-        
-        // Delay para os inimigos aparecerem quando acabamos de sair da tela 1
-        if (delay_inimigos > 0) {
-            delay_inimigos--;
-        } else {
-            // Spawn de inimigos a cada 35 frames
-            inimigo_spawn_timer++;
-            if (inimigo_spawn_timer >= tempo_entre_spawns) {
-                spawn_inimigos();
-                inimigo_spawn_timer = 0;
-            }
-        }
-
-        // Movimenta e desenha os inimigos se estiver ativo
-        for (int i = 0; i < max_inimigos_ativos; i++) {
-            if (inimigos[i].ativo) {
-                inimigos[i].y += 1;  // Inimigo desce 1 pixel por frame
-
-                if (inimigos[i].y > SCREEN_SIZE) {  // Saiu da tela
-                    inimigos[i].ativo = 0;
-                    vida_jogador--; // Perde uma vida
-
-                    if (vida_jogador <= 0) {
-                        contador_frames = 0;
-                        tone(150, 5, 50, TONE_PULSE1);
-                        tela = 3; // Game over :(
-                    }
-                    tone(120, 5, 50, TONE_NOISE);
-
-                } else {
-                    *DRAW_COLORS = 0x0023;
-                    blit(nave_inimiga, inimigos[i].x, inimigos[i].y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
-
-                }
-            }
-        }
-
-        // Inimigo atira com chances aleatórias por frame dependendo do score/dificuldade
-        for (int i = 0; i < max_inimigos_ativos; i++) {
-            if (pontuacao >= SCORE_EXTREMO) {
-                chance_disparo = 2; }
-            else if (pontuacao >= SCORE_DIFICIL) {
-                chance_disparo = 1; } 
-            else if (pontuacao >= SCORE_MEDIO) {
-                chance_disparo = 2; }
-            else if (pontuacao >= SCORE_FACIL) {
-                chance_disparo = 1; }
-            else {
-                chance_disparo = 3; }
-
-            if (inimigos[i].ativo && inimigos[i].y < 70) {
-                if (inimigos[i].tiro_cooldown > 0) {
-                    inimigos[i].tiro_cooldown--;
-                } else if ((rand() % 100) < chance_disparo) {
-                    disparar_tiro_inimigo(inimigos[i].x, inimigos[i].y);
-                    inimigos[i].tiro_cooldown = 90; // Espera >~1s frame para o próximo tiro
-                }
-            }
-        }
-
-        // A cada 2 segundos, 40% de chance de spawnar o boss
-        if (contador_frames % 120 == 0) {
-            if ((rand() % 100) < 40) {
-                spawn_boss();
-            }
-        }
-
-        // Movimenta e desenha o boss se ele estiver ativo
-        if (boss.ativo) {
-            
-            // Se movimenta 1 pixel a cada 2 frames
-            if (contador_frames % 2 == 0) {
-                boss.y += 1;
-            }
-
-            //Se o boss sai da tela...
-            if (boss.y > SCREEN_SIZE) {
-                boss.ativo = 0;
-                vida_jogador--;
-                if (vida_jogador <= 0) {
-                    contador_frames = 0;
-                    tone(150, 5, 50, TONE_PULSE1);
-                    tela = 3;   // Game over
-                } else {
-                    tone(120, 5, 50, TONE_NOISE);
-                }
-            } else {
-                // Atualiza animação
-                boss.timer_animacao++;
-                if (boss.timer_animacao >= 10) { // Muda sprite a cada 10 frames
-                    boss.timer_animacao = 0;
-                    boss.frame_animacao = (boss.frame_animacao + 1) % 4; // Muda entre 0, 1, 2 e 3
-                }
-                
-                // Renderiza o sprite correto (de acordo com a animação)
-                *DRAW_COLORS = 0x0032;
-                switch(boss.frame_animacao) {
-                    case 0:
-                        blit(nave_inimiga_boss1, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
-                        break;
-                    case 1:
-                        blit(nave_inimiga_boss2, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
-                        break;
-                    case 2:
-                        blit(nave_inimiga_boss3, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
-                        break;
-                    case 3:
-                        blit(nave_inimiga_boss4, boss.x, boss.y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
-                        break;
-                }
-            }
-        }
-        
-        // Atira se apertar X (o cooldown é para evitar que o jogador dispare continuamente)
-        if ((gamepad & BUTTON_1) && tiro_cooldown == 0) {
-            disparar_tiro_jogador(nave_x, nave_y);
-            tiro_cooldown = 15;  // Reinicia o cooldown
-        }
-        if (tiro_cooldown > 0) {
-            tiro_cooldown--;
-        }
-
-        // Ult (explosão) se apertar Z
-        if ((gamepad & BUTTON_2) && explosao_cooldown == 0 && !explosao_ativa) {
-            explosao_ativa = 1;
-            explosao_timer = 15;   // Tempo que a explosão demora
-            explosao_cooldown = 480;   // Cooldown pra ult
-
-            // Limpa todos os inimigos
-            for (int i = 0; i < max_inimigos_ativos; i++) {
-                if (inimigos[i].ativo) {
-                    inimigos[i].ativo = 0;
-                    pontuacao++;
-                }
-            }
-
-            // Limpa todos os tiros inimigos
-            for (int i = 0; i < MAX_TIROS_INIMIGOS; i++) {
-                tiros_inimigos[i].ativo = 0;
-            }
-
-            // Limpa todos os tiros do jogador
-            for (int i = 0; i < MAX_TIROS; i++) {
-                tiros[i].ativo = 0;
-            }
-
-            // Limpa o boss
-            if (boss.ativo) {
-                boss.ativo = 0;
-                pontuacao++;
-            }
-
-            tone(400, 5, 70, TONE_PULSE1);
-            tone(60, 30, 90, TONE_NOISE);
-        }
-        if (explosao_cooldown > 0) {
-            explosao_cooldown--;
-        }
-
-        // Efeito visual da explosão (centraliza na nave, e cobre o tamanho da tela + 100 para garantir que, mesmo se a nave esteja em um dos cantos, toda a tela seja coberta)
-        if (explosao_ativa) {
-            int centro_x = nave_x + 16;
-            int centro_y = nave_y + 16;
-            int raio = (SCREEN_SIZE + 100) * (15 - explosao_timer) / 15;
-            uint32_t diametro = (uint32_t)(raio * 2);
-            *DRAW_COLORS = 2;
-            oval(centro_x - raio, centro_y - raio, diametro, diametro);
-            
-            explosao_timer--;
-            if (explosao_timer <= 0) {
-                explosao_ativa = 0;
-            }
-        }
-
-        // Mostra barra de recarga da ult
-        if (explosao_cooldown > 0) {
-            int largura_total = 40;
-            int largura_barra = largura_total * (480 - explosao_cooldown) / 480;
-
-            // Contorno da barra (azul escuro)
-            *DRAW_COLORS = 3;
-            rect(3, 17, (uint32_t)largura_total, 4);
-
-            // Parte preenchida (azul claro)
-            *DRAW_COLORS = 2;
-            rect(3, 17, (uint32_t)largura_barra, 4);
-        }
-
-        // Mostra o score
-        *DRAW_COLORS = 2;
-        char texto[20] = "Score: ";
-        char num_str[10];
-        int_to_str(pontuacao, num_str);
-        int i = 7;
-        for (int j = 0; num_str[j] != '\0'; j++) {
-            texto[i++] = num_str[j];
-         }
-        texto[i] = '\0';
-        text(texto, 70, 5);
-
-        //Mostra a vida
-        for (int i = 0; i < vida_jogador; i++) {
-            *DRAW_COLORS = 0x0023;
-            blit(heart, i*13, -5, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
-        }
-
-        // Se a explosão não estiver ativa...
+        desenhar_score();
+        desenhar_vida();
+        desenhar_barra_cooldown_explosao();
         if (!explosao_ativa) {
-
-            // Desenha a nave do jogador
             *DRAW_COLORS = 0x0324;
             blit(nave, nave_x, nave_y, SPRITE_TOTAL_SIZE, SPRITE_TOTAL_SIZE, BLIT_2BPP);
-
-            // Atualiza e desenha tiros (sobe 3 pixels por frame)
-            *DRAW_COLORS = 3;
-            for (int i = 0; i < MAX_TIROS; i++) {
-
-                if (tiros[i].ativo) {
-                    tiros[i].y -= 2;
-
-                    if (tiros[i].y < 0) {
-                        tiros[i].ativo = 0;
-                    } else {
-
-                        // Checa colisão com os inimigos
-                        for (int j = 0; j < max_inimigos_ativos; j++) {
-                            if (inimigos[j].ativo && 
-                                tiros[i].x >= inimigos[j].x + INIMIGO_OFFSET_X && 
-                                tiros[i].x <= inimigos[j].x + INIMIGO_OFFSET_X + INIMIGO_HITBOX_LARGURA + 3 &&
-                                tiros[i].y >= inimigos[j].y + INIMIGO_OFFSET_Y && 
-                                tiros[i].y <= inimigos[j].y + INIMIGO_OFFSET_Y + INIMIGO_HITBOX_ALTURA) {
-                                
-                                tiros[i].ativo = 0;
-                                inimigos[j].ativo = 0;
-                                pontuacao++;
-                                tone(100, 5, 50, TONE_NOISE);
-                            }
-                        }
-                        
-                        // Desenha o tiro
-                        if (tiros[i].ativo) {
-                            rect(tiros[i].x, tiros[i].y, 1, 1); // Tiro é 1 pixel
-                        }
-
-                        // Checa colisão com o inimigo boss
-                        if (boss.ativo) {
-                            if (boss.ativo && 
-                                tiros[i].x >= boss.x + BOSS_OFFSET_X &&
-                                tiros[i].x <= boss.x + BOSS_OFFSET_X + BOSS_HITBOX_LARGURA &&
-                                tiros[i].y >= boss.y + BOSS_OFFSET_Y &&
-                                tiros[i].y <= boss.y + BOSS_OFFSET_Y + BOSS_HITBOX_ALTURA) {
-                                tiros[i].ativo = 0;
-                                boss.vida--;
-                                tone(100, 5, 50, TONE_NOISE);
-
-                                if (boss.vida <= 0) {
-                                    explosao_particulas_boss(boss.x, boss.y);  // Adicione esta linha
-                                    boss.ativo = 0;
-                                    pontuacao++;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Atualiza e desenha tiros inimigos
-            for (int i = 0; i < MAX_TIROS_INIMIGOS; i++) {
-
-                if (tiros_inimigos[i].ativo) {
-                    tiros_inimigos[i].y += 2;
-
-                    //Jogador leva tiro (perde vida)
-                    if (tiros_inimigos[i].x >= nave_x + PLAYER_OFFSET_X &&
-                        tiros_inimigos[i].x <= nave_x + PLAYER_OFFSET_X + PLAYER_HITBOX_LARGURA &&
-                        tiros_inimigos[i].y >= nave_y + PLAYER_OFFSET_Y - 3 &&  // Não sei por que precisa subtrair 3 para atingir corretamente o hitbox do jogador
-                        tiros_inimigos[i].y <= nave_y + PLAYER_OFFSET_Y + PLAYER_HITBOX_ALTURA + 10) {
-                        tiros_inimigos[i].ativo = 0;
-                        vida_jogador--;
-
-                        if (vida_jogador <= 0) {
-                            contador_frames = 0;
-                            tone(150, 5, 50, TONE_PULSE1);
-                            tela = 3;   // Game Over
-                        } else {
-                            tone(120, 5, 50, TONE_NOISE);
-                        }
-                    }
-
-                    if (tiros_inimigos[i].y > SCREEN_SIZE) { // Saiu da tela
-                        tiros_inimigos[i].ativo = 0;
-                    } else {
-                        *DRAW_COLORS = 2;
-                        rect(tiros_inimigos[i].x, tiros_inimigos[i].y, 1, 3);
-                    }
-                }
-            }
-
         }
     }
 
     /* ====== TELA GAME OVER ====== */
     else if (tela == 3) {
         contador_frames++;
+        desenhar_estrelas_estaticas();
+        desenhar_game_over();
 
-        // Desenha o background de estrelas de fundo estáticas
-        *DRAW_COLORS = 4;
-        for (int i = 0; i < NUM_ESTRELAS; i++) {
-            rect(estrelas[i].x, estrelas[i].y, 1, 1);
-        }
-
-        // Centraliza "GAME OVER" (8 caracteres)
-        *DRAW_COLORS = 2;
-        text("Game Over", 44, 45);  // Cada caractere tem 8px de largura
-
-
-        // Centraliza o score dinamicamente (de acordo com a quantidade de dígitos)
-        char score_text[12] = "Score: ";
-        int score_len = 7;  // "Score: " tem 7 caracteres
-        int temp_score = pontuacao;
-        int digits = 0;
-        char num_str[4] = {0};
-        
-        if (temp_score == 0) {
-            num_str[0] = '0';
-            digits = 1;
-        } else {
-            while (temp_score > 0) {
-                num_str[digits++] = '0' + (temp_score % 10);
-                temp_score /= 10;
-            }
-            // Inverte os dígitos
-            for (int i = 0; i < digits/2; i++) {
-                char temp = num_str[i];
-                num_str[i] = num_str[digits-1-i];
-                num_str[digits-1-i] = temp;
-            }
-        }
-        
-        // Concatena manualmente
-        for (int i = 0; i < digits; i++) {
-            score_text[score_len++] = num_str[i];
-        }
-        score_text[score_len] = '\0';
-
-        // Calcula posição X (considerando 8px por caractere)
-        int text_width = score_len * 8;
-        int pos_x = (SCREEN_SIZE - text_width) / 2;
-        *DRAW_COLORS = 2;
-        text(score_text, pos_x, 65);
-        
-        *DRAW_COLORS = 3;
-        text("Press X to retry", 17, 105);
-
-        // Se apertar X, resetar o estado e voltar para o jogo
-        if ((gamepad & BUTTON_1) && !(gamepad_anterior & BUTTON_1) && contador_frames > 45) {
-            nave_x = 64;
-            nave_y = 53;
-            pontuacao = 0;
-            contador_frames = 0;
-            explosao_ativa = 0;
-            explosao_timer = 0;
-            explosao_cooldown = 0;
-            tiro_cooldown = 0;
-            vida_jogador = 3;
-            primeiro_frame_jogo = 1;
-            delay_inimigos = 40;
-            for (int i = 0; i < MAX_TIROS; i++) tiros[i].ativo = 0;
-            for (int i = 0; i < max_inimigos_ativos; i++) inimigos[i].ativo = 0;
-            for (int i = 0; i < MAX_TIROS_INIMIGOS; i++) tiros_inimigos[i].ativo = 0;
-            boss.ativo = 0;
-            boss.x = 0;
-            boss.y = 0;
-            boss.vida = 0;
-            contador_frames = 0;
+        // Se apertar X, reseta o estado e volta para o jogo
+        if ((gamepad & BUTTON_1) && contador_frames > 45) {
+            resetar_jogo();
             tela = 2;
         }
     }
